@@ -1,7 +1,12 @@
-/data/
-
 .DS_Store
 
 /__pycache__/
 
 /faiss/__pycache__/
+
+/data/faiss/
+/data/raw/
+/data/prepared/
+/data/tensors/
+/data/labelled/
+
