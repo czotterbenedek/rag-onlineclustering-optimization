@@ -11,7 +11,6 @@ class OnlineKMeans:
         metric="euclidean",   # "euclidean" or "cosine"
         new_cluster_threshold=None, # if None, no dynamic creation
         merge_threshold=None,  # if not None, merge centroids closer than this
-        decay=1.0,             # multiply counts by this factor periodically (<=1.0)
         random_state=None,
     ):
         self.n_clusters = n_clusters
@@ -19,7 +18,6 @@ class OnlineKMeans:
         self.metric = metric
         self.new_cluster_threshold = new_cluster_threshold
         self.merge_threshold = merge_threshold
-        self.decay = decay
         self.rng = np.random.RandomState(random_state)
 
         self.centroids = None     # (k, d)
@@ -37,6 +35,7 @@ class OnlineKMeans:
         # returns (n_points, n_centroids) distances
         if self.metric == "euclidean":
             # squared distance then sqrt
+            #TODO: can be used simple distance
             d2 = np.sum((X[:, None, :] - C[None, :, :]) ** 2, axis=2)
             return np.sqrt(d2 + 1e-12)
         else:  # cosine distance = 1 - dot(normalized)
@@ -77,6 +76,37 @@ class OnlineKMeans:
         self.sums = np.zeros_like(self.centroids)
         self.vars = np.zeros(len(self.centroids), dtype=float)
         self.total_seen = 0
+
+    def _merge_close_clusters(self):
+        # merges centroids that are closer than merge_threshold
+        C = self.centroids
+        k = len(C)
+        D = self._pairwise_dist(C, C)  # symmetric
+        np.fill_diagonal(D, np.inf)
+        merge_pairs = np.argwhere(D < self.merge_threshold)
+        if len(merge_pairs) == 0:
+            return
+        to_remove = set()
+        for i, j in merge_pairs:
+            if i in to_remove or j in to_remove:
+                continue
+            # merge j into i (weighted)
+            n_i = self.counts[i]
+            n_j = self.counts[j]
+            total = n_i + n_j if (n_i + n_j) > 0 else 1.0
+            new_centroid = (n_i * self.centroids[i] + n_j * self.centroids[j]) / total
+            self.centroids[i] = new_centroid
+            # update counts, sums, variance
+            self.counts[i] = total
+            self.sums[i] = self.sums[i] + self.sums[j]
+            self.vars[i] = (self.vars[i] + self.vars[j]) / 2.0
+            to_remove.add(j)
+        if to_remove:
+            keep = [idx for idx in range(len(self.centroids)) if idx not in to_remove]
+            self.centroids = self.centroids[keep]
+            self.counts = self.counts[keep]
+            self.sums = self.sums[keep]
+            self.vars = self.vars[keep]
 
     def partial_fit(self, X_batch):
         """
@@ -178,46 +208,6 @@ class OnlineKMeans:
         # optional: merge very close clusters
         if (self.merge_threshold is not None) and (len(self.centroids) > 1):
             self._merge_close_clusters()
-
-    def _merge_close_clusters(self):
-        # merges centroids that are closer than merge_threshold
-        C = self.centroids
-        k = len(C)
-        D = self._pairwise_dist(C, C)  # symmetric
-        np.fill_diagonal(D, np.inf)
-        merge_pairs = np.argwhere(D < self.merge_threshold)
-        if len(merge_pairs) == 0:
-            return
-        to_remove = set()
-        for i, j in merge_pairs:
-            if i in to_remove or j in to_remove:
-                continue
-            # merge j into i (weighted)
-            n_i = self.counts[i]
-            n_j = self.counts[j]
-            total = n_i + n_j if (n_i + n_j) > 0 else 1.0
-            new_centroid = (n_i * self.centroids[i] + n_j * self.centroids[j]) / total
-            self.centroids[i] = new_centroid
-            # update counts, sums, variance
-            self.counts[i] = total
-            self.sums[i] = self.sums[i] + self.sums[j]
-            self.vars[i] = (self.vars[i] + self.vars[j]) / 2.0
-            to_remove.add(j)
-        if to_remove:
-            keep = [idx for idx in range(len(self.centroids)) if idx not in to_remove]
-            self.centroids = self.centroids[keep]
-            self.counts = self.counts[keep]
-            self.sums = self.sums[keep]
-            self.vars = self.vars[keep]
-
-    def predict(self, X):
-        X = np.asarray(X, dtype=float)
-        if X.ndim == 1:
-            X = X.reshape(1, -1)
-        if self.metric == "cosine":
-            X = self._normalize(X)
-        D = self._pairwise_dist(X, self.centroids)
-        return D.argmin(axis=1)
 
     def get_state(self):
         return {
