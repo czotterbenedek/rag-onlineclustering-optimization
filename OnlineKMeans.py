@@ -125,6 +125,16 @@ class OnlineKMeans:
         self.sums = self.sums[keep]
         self.vars = self.vars[keep]
 
+    # ---------------------- Cluster Splitting ---------------------- #
+
+    def _split_cluster(self, X_batch, labels, threshold=0.2, sigma_factor=3.0):
+
+
+
+
+
+        return
+
     # ---------------------- Online Update ---------------------- #
 
     def partial_fit(self, X_batch):
