@@ -127,8 +127,13 @@ class OnlineKMeans:
 
     # ---------------------- Cluster Splitting ---------------------- #
 
-    def _split_cluster(self, X_batch, labels, threshold=0.2, sigma_factor=3.0):
-
+    def _split_cluster(self, X_batch, labels):
+        #TODO
+        """
+        Possible solutions:
+            - Freeze the child clusters for a number of incoming batches to let them stabilize.
+            - Choosing smaller _merge_threshold than _split_threshold to avoid immediate re-merging.
+        """
 
 
 
@@ -250,4 +255,4 @@ class OnlineKMeans:
             "counts": self.counts.copy(),
             "vars": self.vars.copy(),
             "total_seen": self.total_seen,
-        }
+        }   
