@@ -18,12 +18,14 @@ class OnlineKMeans:
         new_cluster_threshold=None,
         merge_threshold=None,
         random_state=None,
+        split_conductance_threshold=None
     ):
         self.n_clusters = n_clusters
         self.max_clusters = max_clusters
         self.metric = metric
         self.new_cluster_threshold = new_cluster_threshold
         self.merge_threshold = merge_threshold
+        self.split_conductance_threshold = split_conductance_threshold
         self.rng = np.random.RandomState(random_state)
 
         self.centroids = None
@@ -31,6 +33,13 @@ class OnlineKMeans:
         self.sums = None
         self.vars = None
         self.total_seen = 0
+
+        if metric == 'cosine' and new_cluster_threshold is not None and not (0 <= new_cluster_threshold <= 1):
+            raise ValueError("For cosine metric, new_cluster_threshold must be in [0, 1].")
+
+        if metric == 'cosine' and merge_threshold is not None and not (0 <= merge_threshold <= 1):
+            raise ValueError("For cosine metric, merge_threshold must be in [0, 1].")
+
 
     # ---------------------- Helper methods ---------------------- #
 
@@ -127,18 +136,114 @@ class OnlineKMeans:
 
     # ---------------------- Cluster Splitting ---------------------- #
 
-    def _split_cluster(self, X_batch, labels):
-        #TODO
+    def _split_cluster(self, X_batch, labels=None): #TODO: needs proper finetuning, and possible refactor of the conductance logic
         """
-        Possible solutions:
-            - Freeze the child clusters for a number of incoming batches to let them stabilize.
-            - Choosing smaller _merge_threshold than _split_threshold to avoid immediate re-merging.
+        Split clusters whose conductance is high (i.e., internally loose) and
+        whose resulting two centroids would be sufficiently distinct.
         """
+        split_counter = 0
 
+        if self.centroids is None or len(self.centroids) == 0:
+            return
 
+        X = np.asarray(X_batch, dtype=float)
+        if X.ndim == 1:
+            X = X.reshape(1, -1)
+        if self.metric == "cosine":
+            X = self._normalize(X)
 
+        D_all = self._pairwise_dist(X, self.centroids)
+        if labels is None:
+            labels = D_all.argmin(axis=1)
 
-        return
+        new_centroids = []
+        new_counts = []
+        new_sums = []
+        new_vars = []
+
+        for k in range(len(self.centroids)):
+            mask = labels == k
+            if not np.any(mask):
+                new_centroids.append(self.centroids[k])
+                new_counts.append(self.counts[k])
+                new_sums.append(self.sums[k])
+                new_vars.append(self.vars[k])
+                continue
+
+            cluster_points = X[mask]
+            centroid = self.centroids[k:k+1]
+
+            # internal dispersion: mean distance from points to own centroid
+            internal_dispersion = np.mean(self._pairwise_dist(cluster_points, centroid))
+
+            # external dispersion: mean distance to nearest OTHER centroid
+            if len(self.centroids) > 1:
+                other_idx = [i for i in range(len(self.centroids)) if i != k]
+                other_centroids = self.centroids[other_idx]
+                external_dispersion = np.mean(self._pairwise_dist(cluster_points, other_centroids).min(axis=1))
+            else:
+                external_dispersion = internal_dispersion + 1e-12
+
+            conductance = internal_dispersion / (internal_dispersion + external_dispersion + 1e-12)
+
+            # Decide split by conductance first
+            if self.split_conductance_threshold is not None and conductance > self.split_conductance_threshold and len(cluster_points) >= 4:
+                # local 2-means initialization + assignment
+                local_idx = self._kmeans_pp_init(cluster_points, k=2)
+                local_centroids = cluster_points[local_idx]
+                if self.metric == "cosine":
+                    local_centroids = self._normalize(local_centroids)
+
+                local_D = self._pairwise_dist(cluster_points, local_centroids)
+                local_labels = local_D.argmin(axis=1)
+
+                pts0 = cluster_points[local_labels == 0]
+                pts1 = cluster_points[local_labels == 1]
+
+                if len(pts0) < 2 or len(pts1) < 2:
+                    new_centroids.append(self.centroids[k])
+                    new_counts.append(self.counts[k])
+                    new_sums.append(self.sums[k])
+                    new_vars.append(self.vars[k])
+                    continue
+
+                c1 = pts0.mean(axis=0)
+                c2 = pts1.mean(axis=0)
+                if self.metric == "cosine":
+                    c1 = self._normalize(c1.reshape(1, -1))[0]
+                    c2 = self._normalize(c2.reshape(1, -1))[0]
+
+                dist_between = float(self._pairwise_dist(c1.reshape(1, -1), c2.reshape(1, -1))[0, 0])
+
+                # check distinctness against merge_threshold (distance semantics)
+                if self.merge_threshold is None or dist_between > self.merge_threshold * 1.05:
+                    split_counter += 1
+                    new_centroids.extend([c1, c2])
+                    new_counts.extend([len(pts0), len(pts1)])
+                    new_sums.extend([pts0.sum(axis=0), pts1.sum(axis=0)])
+                    new_vars.extend([
+                        np.mean(np.sum((pts0 - pts0.mean(axis=0))**2, axis=1)),
+                        np.mean(np.sum((pts1 - pts1.mean(axis=0))**2, axis=1))
+                    ])
+                    continue
+                else:
+                    new_centroids.append(self.centroids[k])
+                    new_counts.append(self.counts[k])
+                    new_sums.append(self.sums[k])
+                    new_vars.append(self.vars[k])
+
+            new_centroids.append(self.centroids[k])
+            new_counts.append(self.counts[k])
+            new_sums.append(self.sums[k])
+            new_vars.append(self.vars[k])
+
+        self.centroids = np.array(new_centroids)
+        self.counts = np.array(new_counts)
+        self.sums = np.array(new_sums)
+        self.vars = np.array(new_vars)
+
+        print(f"{split_counter} clusters split due to high conductance.")
+
 
     # ---------------------- Online Update ---------------------- #
 
@@ -233,6 +338,10 @@ class OnlineKMeans:
         # Merge close clusters if needed
         if self.merge_threshold is not None and len(self.centroids) > 1:
             self._merge_close_clusters()
+
+        # Split loose clusters if needed
+        if self.split_conductance_threshold is not None and len(self.centroids) > 0:
+            self._split_cluster(X, labels)
 
     # ---------------------- Utility ---------------------- #
 
