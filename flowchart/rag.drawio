@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36" version="28.2.8">
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36" version="28.2.8">
   <diagram name="1 oldal" id="wI6BksSly18XZ3uJfsxo">
     <mxGraphModel dx="976" dy="544" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" background="#FFFFFF" math="0" shadow="0">
       <root>
@@ -25,14 +25,8 @@
             <mxPoint x="440" y="260" as="targetPoint" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="N89jbb6eCkzvyilVt5ze-1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" parent="1" source="HQ73maBf9M-sMPFiUdya-9" target="HQ73maBf9M-sMPFiUdya-10" edge="1">
-          <mxGeometry relative="1" as="geometry" />
-        </mxCell>
         <mxCell id="HQ73maBf9M-sMPFiUdya-9" value="Chunk 1&lt;div&gt;Chunk 2&lt;/div&gt;&lt;div&gt;.....&lt;/div&gt;" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" parent="1" vertex="1">
           <mxGeometry x="560" y="305" width="120" height="60" as="geometry" />
-        </mxCell>
-        <mxCell id="HQ73maBf9M-sMPFiUdya-10" value="Top K chunks" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="1" vertex="1">
-          <mxGeometry x="575" y="260" width="90" height="30" as="geometry" />
         </mxCell>
         <mxCell id="HQ73maBf9M-sMPFiUdya-11" value="" style="endArrow=classic;html=1;rounded=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" parent="1" source="HQ73maBf9M-sMPFiUdya-2" target="HQ73maBf9M-sMPFiUdya-9" edge="1">
           <mxGeometry width="50" height="50" relative="1" as="geometry">
@@ -59,13 +53,16 @@
           </mxGeometry>
         </mxCell>
         <mxCell id="snZoiZan-CD7s3evwRZL-1" value="" style="swimlane;startSize=0;" parent="1" vertex="1">
-          <mxGeometry x="40" y="100" width="1130" height="340" as="geometry" />
+          <mxGeometry x="40" y="90" width="1130" height="340" as="geometry" />
         </mxCell>
         <mxCell id="A9yZb9H9MPbL-8OhquA2-1" value="Generation" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="snZoiZan-CD7s3evwRZL-1" vertex="1">
           <mxGeometry x="890" y="200" width="60" height="30" as="geometry" />
         </mxCell>
         <mxCell id="A9yZb9H9MPbL-8OhquA2-2" value="Retrieval" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="snZoiZan-CD7s3evwRZL-1" vertex="1">
           <mxGeometry x="430" y="190" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="HQ73maBf9M-sMPFiUdya-10" value="Top K chunks" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" parent="snZoiZan-CD7s3evwRZL-1" vertex="1">
+          <mxGeometry x="540" y="180" width="90" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
